@@ -3,25 +3,22 @@ import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
-import os from "node:os";
 import readline from "node:readline";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { config as envConfig, mergeConfigFromEnv } from "./env.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectDir = path.resolve(__dirname, "..");
 const publicDir = path.join(__dirname, "public");
-const sourceMdPath = path.join(projectDir, "publish_source.md");
-const sourceJsonPath = path.join(projectDir, "publish_source.json");
-const importStatePath = path.join(projectDir, "publish_thread_import_state.json");
-const runRequestPath = path.join(projectDir, "publish_run_request.json");
-const latestRunPath = path.join(projectDir, "publish_latest_run.json");
+const sourceMdPath = path.join(envConfig.dataDir, "publish_source.md");
+const sourceJsonPath = path.join(envConfig.dataDir, "publish_source.json");
+const importStatePath = path.join(envConfig.dataDir, "publish_thread_import_state.json");
+const runRequestPath = path.join(envConfig.outputDir, "publish_run_request.json");
+const latestRunPath = path.join(envConfig.outputDir, "publish_latest_run.json");
 const configPath = path.join(__dirname, "config.json");
 const runnerPath = path.join(__dirname, "runner.js");
-const defaultCopyThreadId = process.env.XHS_COPY_THREAD_ID || "019dd40f-df25-7692-afeb-b924d061d6f9";
-const defaultCodexStateDbPath = process.env.CODEX_STATE_DB_PATH || path.join(os.homedir(), ".codex", "state_5.sqlite");
-const autoImportIntervalMs = 5000;
+const autoImportIntervalMs = envConfig.pollIntervalMs;
 let runnerProcess = null;
 let autoImportInFlight = false;
 
@@ -180,20 +177,21 @@ function parseAgentCandidate(message) {
 }
 
 async function rolloutPathFromSqlite() {
-  const config = await readJsonFile(configPath, {});
-  const copyThreadId = config.copyThreadId || defaultCopyThreadId;
-  const codexStateDbPath = config.codexStateDbPath || defaultCodexStateDbPath;
+  const config = await readAppConfig();
+  const copyThreadId = config.copyThreadId;
+  const codexStateDbPath = config.codexStateDbPath;
+  if (!copyThreadId) throw new Error("缺少环境变量 XHS_COPY_THREAD_ID，或 config.json 中的 copyThreadId");
   const { stdout } = await execFileAsync("sqlite3", [
     codexStateDbPath,
     "select rollout_path from threads where id = '" + copyThreadId.replace(/'/g, "''") + "' limit 1;"
   ]);
   const rolloutPath = stdout.trim();
   if (!rolloutPath) throw new Error("未找到文案线程 rollout 路径");
-  return rolloutPath;
+  return { rolloutPath, copyThreadId };
 }
 
 async function importLatestFromThread() {
-  const rolloutPath = await rolloutPathFromSqlite();
+  const { rolloutPath, copyThreadId } = await rolloutPathFromSqlite();
   const previousState = await readJsonFile(importStatePath, null);
   const startLine = previousState?.threadId === copyThreadId ? Number(previousState.lastSeenLine || 0) : 0;
   let lineNo = 0;
@@ -265,6 +263,18 @@ async function readJsonFile(filePath, fallback) {
   }
 }
 
+async function readAppConfig() {
+  return mergeConfigFromEnv(await readJsonFile(configPath, {}));
+}
+
+async function ensureRuntimeDirs() {
+  await Promise.all([
+    fs.mkdir(envConfig.dataDir, { recursive: true }),
+    fs.mkdir(envConfig.imageDir, { recursive: true }),
+    fs.mkdir(envConfig.outputDir, { recursive: true })
+  ]);
+}
+
 async function readSource() {
   try {
     const markdown = await fs.readFile(sourceMdPath, "utf8");
@@ -298,7 +308,7 @@ function buildRunRequest() {
 
 async function validateRunInputs() {
   const source = await readSource();
-  const config = await readJsonFile(configPath, {});
+  const config = await readAppConfig();
   const errors = validateSource(source);
   if (!config.gptImageChatUrl) errors.push("请先填写指定 GPT 生图会话 URL");
   return { source, config, errors };
@@ -358,9 +368,9 @@ async function autoImportAndRunOnce() {
       import: result,
       run
     };
-    await fs.writeFile(path.join(projectDir, "auto_import_latest_run.json"), JSON.stringify(status, null, 2), "utf8");
+    await fs.writeFile(path.join(envConfig.outputDir, "auto_import_latest_run.json"), JSON.stringify(status, null, 2), "utf8");
   } catch (error) {
-    await fs.writeFile(path.join(projectDir, "auto_import_latest_run.json"), JSON.stringify({
+    await fs.writeFile(path.join(envConfig.outputDir, "auto_import_latest_run.json"), JSON.stringify({
       updatedAt: new Date().toISOString(),
       error: error.message
     }, null, 2), "utf8").catch(() => {});
@@ -409,7 +419,7 @@ async function handleApi(req, res, url) {
   }
 
   if (url.pathname === "/api/config" && req.method === "GET") {
-    const config = await readJsonFile(configPath, {});
+    const config = await readAppConfig();
     return sendJson(res, 200, { config, executionRules, path: configPath });
   }
 
@@ -418,7 +428,7 @@ async function handleApi(req, res, url) {
     const currentConfig = await readJsonFile(configPath, {});
     const nextConfig = {
       gptImageChatUrl: String(config?.gptImageChatUrl || "").trim(),
-      downloadDir: String(config?.downloadDir || path.join(os.homedir(), "Downloads")).trim(),
+      downloadDir: String(config?.downloadDir || envConfig.imageDir).trim(),
       autoRefreshSeconds: Number(config?.autoRefreshSeconds || 90),
       maxImageRetries: Number(config?.maxImageRetries || 2),
       defaultDraftAuthorization: Boolean(config?.defaultDraftAuthorization),
@@ -452,9 +462,9 @@ async function handleApi(req, res, url) {
   }
 
   if (url.pathname === "/api/latest-image" && req.method === "GET") {
-    const config = await readJsonFile(configPath, {});
+    const config = await readAppConfig();
     try {
-      return sendJson(res, 200, { image: await latestImage(config.downloadDir || path.join(os.homedir(), "Downloads")) });
+      return sendJson(res, 200, { image: await latestImage(config.downloadDir || envConfig.imageDir) });
     } catch (error) {
       return sendJson(res, 500, { error: error.message });
     }
@@ -501,9 +511,10 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-const port = Number(process.env.PORT || 5178);
-server.listen(port, "127.0.0.1", () => {
-  console.log(`XHS publish console running at http://127.0.0.1:${port}`);
+await ensureRuntimeDirs();
+
+server.listen(envConfig.port, "127.0.0.1", () => {
+  console.log(`XHS publish console running at http://127.0.0.1:${envConfig.port}`);
   setInterval(() => {
     autoImportAndRunOnce();
   }, autoImportIntervalMs).unref();

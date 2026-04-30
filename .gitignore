@@ -5,6 +5,8 @@ node_modules/
 .chrome-automation-profile/
 .chrome-human-profile/
 xhs-publish-console/config.json
+xhs-publish-console/.env
+xhs-publish-console/data/
 
 # Runtime state
 auto_import_latest_run.json

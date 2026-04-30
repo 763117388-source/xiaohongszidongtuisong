@@ -105,7 +105,7 @@ test("publicQiniuUrl joins configured domain and uploaded key", () => {
 
 test("validateWechatPushConfig reports missing push and qiniu fields", () => {
   assert.deepEqual(validateWechatPushConfig({ enableWechatPush: true }), [
-    "pushplusToken",
+    "PUSHPLUS_TOKEN",
     "qiniu.accessKey",
     "qiniu.secretKey",
     "qiniu.bucket",
@@ -119,11 +119,11 @@ test("validateWechatPushConfig reports missing aliyun OSS fields", () => {
     storageProvider: "aliyunOss",
     pushplusToken: "token"
   }), [
-    "aliyunOss.accessKeyId",
-    "aliyunOss.accessKeySecret",
-    "aliyunOss.bucket",
-    "aliyunOss.region",
-    "aliyunOss.endpoint"
+    "ALIYUN_OSS_ACCESS_KEY_ID",
+    "ALIYUN_OSS_ACCESS_KEY_SECRET",
+    "ALIYUN_OSS_BUCKET",
+    "ALIYUN_OSS_ENDPOINT",
+    "ALIYUN_OSS_PUBLIC_BASE_URL"
   ]);
 });
 

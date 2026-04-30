@@ -2,15 +2,16 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { config as envConfig, mergeConfigFromEnv } from "./env.js";
 import { buildImageGeneratedRun } from "./runner-state.js";
 import { pushDraftToWechat } from "./wechat-push.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectDir = path.resolve(__dirname, "..");
 const configPath = path.join(__dirname, "config.json");
-const sourceMdPath = path.join(projectDir, "publish_source.md");
-const runRequestPath = path.join(projectDir, "publish_run_request.json");
-const latestRunPath = path.join(projectDir, "publish_latest_run.json");
+const sourceMdPath = path.join(envConfig.dataDir, "publish_source.md");
+const runRequestPath = path.join(envConfig.outputDir, "publish_run_request.json");
+const latestRunPath = path.join(envConfig.outputDir, "publish_latest_run.json");
 
 const dryRun = process.argv.includes("--dry-run");
 const skipImage = process.argv.includes("--skip-image");
@@ -57,15 +58,23 @@ async function readJson(filePath, fallback = null) {
 }
 
 async function readInputs() {
-  const [config, request, markdown] = await Promise.all([
+  const [fileConfig, request, markdown] = await Promise.all([
     readJson(configPath, {}),
     readJson(runRequestPath, {}),
     fs.readFile(sourceMdPath, "utf8")
   ]);
+  const config = mergeConfigFromEnv(fileConfig);
   const source = parseMarkdown(markdown);
   const errors = validate(source, config, request);
   if (errors.length) throw new Error(errors.join("\n"));
   return { config, request, source };
+}
+
+async function ensureRuntimeDirs() {
+  await Promise.all([
+    fs.mkdir(envConfig.imageDir, { recursive: true }),
+    fs.mkdir(envConfig.outputDir, { recursive: true })
+  ]);
 }
 
 async function latestImage(downloadDir, sinceMs = 0) {
@@ -324,6 +333,7 @@ async function writeLatestRun(data) {
 }
 
 async function main() {
+  await ensureRuntimeDirs();
   const { config, source } = await readInputs();
   log(`读取成功：标题 ${source.title.length} 字，正文 ${source.body.length} 字`);
   if (dryRun) {

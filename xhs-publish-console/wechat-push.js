@@ -40,15 +40,15 @@ function nonEmpty(value) {
 
 export function validateWechatPushConfig(config = {}) {
   const missing = [];
-  if (!nonEmpty(config.pushplusToken)) missing.push("pushplusToken");
+  if (!nonEmpty(config.pushplusToken)) missing.push("PUSHPLUS_TOKEN");
 
   if (storageProvider(config) === "aliyunOss") {
     const aliyunOss = normalizeAliyunOssConfig(config);
-    if (!nonEmpty(aliyunOss.accessKeyId)) missing.push("aliyunOss.accessKeyId");
-    if (!nonEmpty(aliyunOss.accessKeySecret)) missing.push("aliyunOss.accessKeySecret");
-    if (!nonEmpty(aliyunOss.bucket)) missing.push("aliyunOss.bucket");
-    if (!nonEmpty(aliyunOss.region)) missing.push("aliyunOss.region");
-    if (!nonEmpty(aliyunOss.endpoint)) missing.push("aliyunOss.endpoint");
+    if (!nonEmpty(aliyunOss.accessKeyId)) missing.push("ALIYUN_OSS_ACCESS_KEY_ID");
+    if (!nonEmpty(aliyunOss.accessKeySecret)) missing.push("ALIYUN_OSS_ACCESS_KEY_SECRET");
+    if (!nonEmpty(aliyunOss.bucket)) missing.push("ALIYUN_OSS_BUCKET");
+    if (!nonEmpty(aliyunOss.endpoint)) missing.push("ALIYUN_OSS_ENDPOINT");
+    if (!nonEmpty(aliyunOss.domain)) missing.push("ALIYUN_OSS_PUBLIC_BASE_URL");
     return missing;
   }
 
@@ -244,10 +244,11 @@ export async function uploadImageToAliyunOss(imagePath, config, options = {}) {
     secure: true
   });
   const response = await client.put(key, imagePath, {});
+  const publicUrl = publicAliyunOssUrl(aliyunOss, key);
   const signedUrl = typeof client.signatureUrl === "function"
     ? client.signatureUrl(key, { expires: Number(aliyunOss.signedUrlExpires || 60 * 60 * 24 * 30) })
     : "";
-  return { key, url: signedUrl || publicAliyunOssUrl(aliyunOss, key), response };
+  return { key, url: aliyunOss.domain ? publicUrl : signedUrl || publicUrl, response };
 }
 
 export async function uploadImageToStorage(imagePath, config, options = {}) {
