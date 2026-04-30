@@ -1,0 +1,19 @@
+{
+  "name": "xhs-publish-console",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "run:image": "node runner.js",
+    "run:draft": "node runner.js",
+    "run:dry": "node runner.js --dry-run",
+    "chrome:debug": "node open-debug-chrome.js",
+    "push:wechat": "node push-wechat.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "ali-oss": "^6.23.0",
+    "playwright": "^1.59.1"
+  }
+}

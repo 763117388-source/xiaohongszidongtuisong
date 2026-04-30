@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>小红书发布控制台</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar">
+        <div>
+          <h1>小红书发布控制台</h1>
+          <p>编辑封面提示词、标题、内文，固定 GPT 生图窗口，并在图片生成后推送到微信。</p>
+        </div>
+        <div class="status" id="status">读取中</div>
+      </section>
+
+      <section class="grid">
+        <form class="panel editor" id="sourceForm">
+          <div class="panelHead">
+            <h2>发布内容</h2>
+            <div class="headActions">
+              <button class="secondary" type="button" id="reloadButton">重新读取</button>
+            </div>
+          </div>
+
+          <label>
+            <span>封面提示词</span>
+            <textarea id="coverPrompt" rows="5" placeholder="给 GPT 生图用的完整提示词"></textarea>
+          </label>
+
+          <label>
+            <span>标题 <b id="titleCount">0/20</b></span>
+            <input id="title" maxlength="40" placeholder="小红书标题" />
+          </label>
+
+          <label>
+            <span>内文 <b id="bodyCount">0/1000</b></span>
+            <textarea id="body" rows="13" placeholder="正文、话题、换行和行动引导"></textarea>
+          </label>
+
+          <div class="actions">
+            <button type="submit">保存内容</button>
+            <button class="secondary" type="button" id="copySummaryButton">复制摘要</button>
+          </div>
+        </form>
+
+        <aside class="panel side">
+          <details class="foldBox">
+            <summary>自动化配置</summary>
+            <label>
+              <span>指定 GPT 生图会话 URL</span>
+              <input id="gptImageChatUrl" placeholder="https://chatgpt.com/c/..." />
+            </label>
+            <label>
+              <span>下载目录</span>
+              <input id="downloadDir" />
+            </label>
+
+            <div class="split">
+              <label>
+                <span>生图等待秒数</span>
+                <input id="autoRefreshSeconds" type="number" min="30" max="300" step="5" />
+              </label>
+              <label>
+                <span>最大重试</span>
+                <input id="maxImageRetries" type="number" min="0" max="5" step="1" />
+              </label>
+            </div>
+
+            <label class="check">
+              <input id="defaultDraftAuthorization" type="checkbox" />
+              <span>开始执行后，默认授权粘贴提示词、下载图片、上传图片存储并推送微信</span>
+            </label>
+            <p class="guard">不会打开、填写或发布小红书。</p>
+
+            <label class="check">
+              <input id="enableWechatPush" type="checkbox" />
+              <span>图片生成后，自动推送图片、标题、内文到微信</span>
+            </label>
+
+            <label>
+              <span>PushPlus Token</span>
+              <input id="pushplusToken" autocomplete="off" placeholder="pushplus token" />
+            </label>
+
+            <label>
+              <span>图片存储</span>
+              <select id="storageProvider">
+                <option value="aliyunOss">阿里云 OSS</option>
+                <option value="qiniu">七牛云</option>
+              </select>
+            </label>
+
+            <div class="split">
+              <label>
+                <span>OSS AccessKey ID</span>
+                <input id="aliyunOssAccessKeyId" autocomplete="off" />
+              </label>
+              <label>
+                <span>OSS AccessKey Secret</span>
+                <input id="aliyunOssAccessKeySecret" autocomplete="off" type="password" />
+              </label>
+            </div>
+
+            <div class="split">
+              <label>
+                <span>OSS Bucket</span>
+                <input id="aliyunOssBucket" />
+              </label>
+              <label>
+                <span>OSS Region</span>
+                <input id="aliyunOssRegion" placeholder="oss-cn-shanghai" />
+              </label>
+            </div>
+
+            <div class="split">
+              <label>
+                <span>OSS Endpoint</span>
+                <input id="aliyunOssEndpoint" placeholder="oss-cn-shanghai.aliyuncs.com" />
+              </label>
+              <label>
+                <span>OSS 公网域名</span>
+                <input id="aliyunOssDomain" placeholder="https://bucket.oss-cn-shanghai.aliyuncs.com" />
+              </label>
+            </div>
+
+            <label>
+              <span>OSS 图片目录前缀</span>
+              <input id="aliyunOssKeyPrefix" placeholder="xhs-covers" />
+            </label>
+
+            <div class="split">
+              <label>
+                <span>七牛 AccessKey</span>
+                <input id="qiniuAccessKey" autocomplete="off" />
+              </label>
+              <label>
+                <span>七牛 SecretKey</span>
+                <input id="qiniuSecretKey" autocomplete="off" type="password" />
+              </label>
+            </div>
+
+            <div class="split">
+              <label>
+                <span>七牛 Bucket</span>
+                <input id="qiniuBucket" />
+              </label>
+              <label>
+                <span>七牛 CDN 域名</span>
+                <input id="qiniuDomain" placeholder="https://cdn.example.com" />
+              </label>
+            </div>
+
+            <div class="split">
+              <label>
+                <span>七牛上传地址</span>
+                <input id="qiniuUploadUrl" placeholder="https://upload.qiniup.com" />
+              </label>
+              <label>
+                <span>图片目录前缀</span>
+                <input id="qiniuKeyPrefix" placeholder="xhs-covers" />
+              </label>
+            </div>
+
+            <div class="actions vertical">
+              <button id="saveConfigButton" type="button">保存配置</button>
+            </div>
+          </details>
+
+          <details class="rulesBox">
+            <summary>执行规则</summary>
+            <ol id="executionRules">
+              <li>读取中</li>
+            </ol>
+          </details>
+
+          <div class="commandBox" id="commandBox" hidden></div>
+          <details class="runnerBox">
+            <summary>快路径 Runner</summary>
+            <code>cd xhs-publish-console && npm run chrome:debug</code>
+            <code>cd xhs-publish-console && npm run run:image</code>
+            <p>先运行第一条命令，手动登录 ChatGPT 并完成人机验证；保持 Chrome 开着。服务会自动抓取新文案、生图并推送微信，第二条命令只用于手动补跑。</p>
+          </details>
+
+          <div class="latest">
+            <h3>最新下载图片</h3>
+            <p id="latestImage">未检查</p>
+            <button class="secondary" id="latestImageButton" type="button">检查最新图片</button>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

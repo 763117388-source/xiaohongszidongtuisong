@@ -1,0 +1,33 @@
+{
+  "gptImageChatUrl": "https://chatgpt.com/c/your-image-chat",
+  "copyThreadId": "your-codex-copy-thread-id",
+  "codexStateDbPath": "/Users/your-name/.codex/state_5.sqlite",
+  "downloadDir": "/Users/your-name/Downloads",
+  "autoRefreshSeconds": 90,
+  "maxImageRetries": 2,
+  "defaultDraftAuthorization": true,
+  "enableWechatPush": true,
+  "pushplusToken": "your-pushplus-token",
+  "storageProvider": "aliyunOss",
+  "aliyunOss": {
+    "accessKeyId": "your-access-key-id",
+    "accessKeySecret": "your-access-key-secret",
+    "bucket": "your-bucket",
+    "region": "oss-cn-shanghai",
+    "endpoint": "oss-cn-shanghai.aliyuncs.com",
+    "domain": "https://your-bucket.oss-cn-shanghai.aliyuncs.com",
+    "keyPrefix": "xhs-covers"
+  },
+  "qiniu": {
+    "accessKey": "",
+    "secretKey": "",
+    "bucket": "",
+    "domain": "",
+    "uploadUrl": "https://upload.qiniup.com",
+    "keyPrefix": "xhs-covers"
+  },
+  "browser": {
+    "connectOverCDP": true,
+    "remoteDebuggingUrl": "http://127.0.0.1:9222"
+  }
+}

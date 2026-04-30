@@ -1,0 +1,23 @@
+.DS_Store
+node_modules/
+
+# Local browser profiles and credentials
+.chrome-automation-profile/
+.chrome-human-profile/
+xhs-publish-console/config.json
+
+# Runtime state
+auto_import_latest_run.json
+publish_latest_run.json
+publish_run_request.json
+publish_source.json
+publish_source.md
+publish_thread_import_state.json
+wechat_push_sequence.json
+
+# Generated/collected media
+output/
+
+# Legacy analysis/import scripts outside V1 app
+make_xhs_sunglasses_carousel.py
+小红书墨镜爆款收集分析.md
